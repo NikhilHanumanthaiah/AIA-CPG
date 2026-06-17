@@ -61,6 +61,7 @@ class SalesFact(Base):
     transaction_timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     sku_id: Mapped[str] = mapped_column(String(50), ForeignKey("dim_product.sku_id"), nullable=False)
     store_id: Mapped[str] = mapped_column(String(50), ForeignKey("dim_store.store_id"), nullable=False)
+    customer_id: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("customer_master.customer_id"), nullable=True)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     unit_price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     revenue: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
@@ -69,6 +70,7 @@ class SalesFact(Base):
     # Relationships
     product: Mapped["ProductDimension"] = relationship(back_populates="sales")
     store: Mapped["StoreDimension"] = relationship(back_populates="sales")
+    customer: Mapped[Optional["CustomerMaster"]] = relationship(back_populates="sales")
 
 
 class ForecastResult(Base):
@@ -119,3 +121,6 @@ class CustomerMaster(Base):
     customer_name: Mapped[str] = mapped_column(String(100), nullable=False)
     email: Mapped[str] = mapped_column(String(100), nullable=False)
     region: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+
+    # Relationships
+    sales: Mapped[list["SalesFact"]] = relationship(back_populates="customer")

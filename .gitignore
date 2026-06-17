@@ -164,3 +164,6 @@ Thumbs.db
 # Project local SQLite files
 *.db
 test.db
+
+# extra files for the project
+test_data

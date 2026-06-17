@@ -42,6 +42,7 @@ TABLE_REGISTRY: Dict[str, Dict[str, Any]] = {
             "transaction_timestamp": datetime,
             "sku_id": str,
             "store_id": str,
+            "customer_id": str,
             "quantity": int,
             "unit_price": float,
             "revenue": float,

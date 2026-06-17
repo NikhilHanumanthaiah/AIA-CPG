@@ -12,8 +12,8 @@ def test_csv_reader_validation(tmp_path):
     # 1. Create a valid sales CSV in the temporary directory
     sales_file = tmp_path / "sales.csv"
     sales_file.write_text(
-        "transaction_id,transaction_timestamp,sku_id,store_id,quantity,unit_price,currency\n"
-        "tx_1,2026-06-17T12:00:00Z,SKU001,STORE01,10,5.99,USD\n"
+        "transaction_id,transaction_timestamp,sku_id,store_id,customer_id,quantity,unit_price,currency\n"
+        "tx_1,2026-06-17T12:00:00Z,SKU001,STORE01,CUST001,10,5.99,USD\n"
     )
     
     # Read the file
