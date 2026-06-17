@@ -1,0 +1,440 @@
+# AI Acceleration Engineer Evaluation Project - Master Project Context
+
+## Project Objective
+
+Build a production-oriented analytics platform for a mid-size Consumer Packaged Goods (CPG) company.
+
+The objective is not to build the most sophisticated forecasting system or AI application. The objective is to demonstrate full-stack engineering capability across:
+
+* Data Engineering
+* Analytics Engineering
+* Machine Learning
+* AI/LLM Integration
+* API Development
+* Frontend Development
+* Software Engineering
+* DevOps
+* Documentation
+
+The solution must provide a complete end-to-end workflow from raw business data to user-facing insights.
+
+The project should be structured as if another engineering team will inherit it and continue development.
+
+---
+
+# Business Problem
+
+A CPG company receives sales data from multiple systems.
+
+Business stakeholders need:
+
+1. Reliable sales data foundation
+2. Revenue forecasting
+3. AI-generated business insights
+4. APIs for downstream systems
+5. Interactive dashboard
+
+Users should be able to:
+
+* View sales performance
+* Analyze trends
+* Generate forecasts
+* Ask questions about data
+* Receive AI-generated summaries
+
+---
+
+# Success Criteria
+
+The system is successful when:
+
+Raw Data
+→ Data Validation
+→ Data Cleaning
+→ Data Storage
+→ Feature Generation
+→ Forecasting
+→ AI Insight Generation
+→ API Exposure
+→ Dashboard Visualization
+
+works end-to-end.
+
+---
+
+# Evaluation Priorities
+
+The evaluation prioritizes:
+
+1. Complete system thinking
+2. Architectural decisions
+3. Engineering trade-offs
+4. Code organization
+5. Extensibility
+6. AI-assisted development workflow
+
+The evaluation does NOT prioritize:
+
+* Deep ML research
+* Advanced forecasting models
+* Complex AI systems
+* Massive scalability
+
+A simple working solution is preferred over an incomplete sophisticated solution.
+
+---
+
+# Architecture Principles
+
+1. Keep components loosely coupled.
+2. Use clear separation of concerns.
+3. Make every layer independently replaceable.
+4. Optimize for maintainability.
+5. Optimize for handoff to another team.
+6. Avoid unnecessary complexity.
+
+---
+
+# Proposed Technology Stack
+
+Backend:
+
+* Python 3.12+
+
+Database:
+
+* PostgreSQL
+
+Data Processing:
+
+* Pandas
+
+Forecasting:
+
+* Prophet OR Linear Regression
+
+AI Layer:
+
+* OpenAI API / Gemini API
+
+API:
+
+* FastAPI
+
+Frontend:
+
+* Streamlit
+
+Testing:
+
+* Pytest
+
+Containerization:
+
+* Docker
+
+CI/CD:
+
+* GitHub Actions
+
+Documentation:
+
+* ADR
+* README
+
+---
+
+# High-Level Architecture
+
+```
+                ┌─────────────────────┐
+                │   Source Datasets   │
+                └──────────┬──────────┘
+                           │
+     ┌─────────────────────┼─────────────────────┐
+     │                     │                     │
+     ▼                     ▼                     ▼
+```
+
+Sales Transactions     Product Master      Store/Region Data
+
+```
+     │
+     ▼
+```
+
+┌─────────────────────────────────────────────┐
+│              Ingestion Layer                │
+│                                              │
+│ - CSV Reader                                │
+│ - Schema Validation                         │
+│ - Type Validation                           │
+│ - Data Quality Checks                       │
+└─────────────────────────────────────────────┘
+
+```
+     │
+     ▼
+```
+
+┌─────────────────────────────────────────────┐
+│              Transformation Layer           │
+│                                              │
+│ - Null Handling                             │
+│ - Deduplication                             │
+│ - Currency Normalization                    │
+│ - Data Standardization                      │
+│ - Business Rule Validation                  │
+└─────────────────────────────────────────────┘
+
+```
+     │
+     ▼
+```
+
+┌─────────────────────────────────────────────┐
+│                PostgreSQL                   │
+└─────────────────────────────────────────────┘
+
+```
+     │
+     ▼
+```
+
+┌─────────────────────────────────────────────┐
+│             Analytics Layer                 │
+│                                              │
+│ - KPI Generation                            │
+│ - Revenue Aggregation                       │
+│ - Forecast Dataset Creation                 │
+└─────────────────────────────────────────────┘
+
+```
+     │
+     ├─────────────────────────┐
+     ▼                         ▼
+```
+
+┌──────────────────┐      ┌──────────────────┐
+│ Forecast Service │      │ AI Insight Layer │
+└──────────────────┘      └──────────────────┘
+
+```
+     │                         │
+     └──────────────┬──────────┘
+                    ▼
+
+          ┌─────────────────┐
+          │    FastAPI      │
+          └─────────────────┘
+
+                    │
+                    ▼
+
+          ┌─────────────────┐
+          │   Streamlit UI  │
+          └─────────────────┘
+```
+
+---
+
+# Data Architecture
+
+## Fact Table
+
+fact_sales
+
+Purpose:
+Stores all sales transactions.
+
+Columns:
+
+* transaction_id
+* transaction_timestamp
+* sku_id
+* store_id
+* quantity
+* unit_price
+* revenue
+* currency
+
+---
+
+## Product Dimension
+
+dim_product
+
+Columns:
+
+* sku_id
+* category
+* brand
+* package_size
+* launch_date
+
+---
+
+## Store Dimension
+
+dim_store
+
+Columns:
+
+* store_id
+* region
+* state
+* city
+
+---
+
+## Date Dimension
+
+dim_date
+
+Columns:
+
+* date_key
+* day
+* week
+* month
+* quarter
+* year
+* season
+
+---
+
+## Forecast Table
+
+forecast_results
+
+Columns:
+
+* forecast_date
+* region
+* category
+* predicted_revenue
+* model_version
+* prediction_timestamp
+
+---
+
+# Functional Requirements
+
+Data Layer
+
+* Load source files
+* Validate schema
+* Validate records
+* Clean data
+* Deduplicate records
+* Persist data
+
+Analytics Layer
+
+* Generate KPIs
+* Generate aggregated sales metrics
+* Create forecasting dataset
+
+Forecasting Layer
+
+* Train model from actual data
+* Generate future revenue forecasts
+* Forecast by region
+* Forecast by category
+
+AI Layer
+
+* Generate trend summaries
+* Explain business performance
+* Summarize forecasting output
+
+API Layer
+
+* Serve KPIs
+* Serve forecasts
+* Serve AI insights
+
+UI Layer
+
+* Dashboard
+* Forecast page
+* AI insights page
+
+---
+
+# Non-Functional Requirements
+
+* Dockerized
+* CI pipeline
+* Automated tests
+* Reproducible startup
+* Architecture documentation
+* Extension points documented
+
+---
+
+# MVP Scope
+
+Must Have
+
+1. CSV ingestion
+2. PostgreSQL storage
+3. Data cleaning
+4. Revenue forecasting
+5. FastAPI backend
+6. Streamlit frontend
+7. LLM summary generation
+8. Docker
+9. GitHub Actions
+10. Tests
+11. Documentation
+
+Out of Scope
+
+* Real-time streaming
+* Kafka
+* Spark
+* Airflow
+* Vector databases
+* RAG
+* Kubernetes
+* MLOps platforms
+* Advanced forecasting
+
+---
+
+# Recommended Repository Structure
+
+project/
+
+├── data/
+│
+├── database/
+│
+├── ingestion/
+│
+├── transformations/
+│
+├── forecasting/
+│
+├── ai/
+│
+├── api/
+│
+├── frontend/
+│
+├── tests/
+│
+├── docs/
+│
+├── docker/
+│
+├── .github/workflows/
+│
+├── docker-compose.yml
+│
+└── README.md
+
+---
+
+For every implementation decision, prioritize simplicity, maintainability, and end-to-end completeness over sophistication.
