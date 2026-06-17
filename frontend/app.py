@@ -121,6 +121,44 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# --- Sidebar Navigation & Filters ---
+st.sidebar.header("🎛️ Control Panel")
+st.sidebar.write("Filter metrics across the dashboard")
+
+# Fetch regions dynamically from API
+try:
+    regions_res = requests.get(f"{API_URL}/sales/regions", timeout=3)
+    if regions_res.status_code == 200:
+        regions_list = regions_res.json()
+        regions_options = ["All Regions"] + regions_list
+    else:
+        regions_options = ["All Regions", "Northeast", "Midwest", "South", "West"]
+except Exception:
+    regions_options = ["All Regions", "Northeast", "Midwest", "South", "West"]
+
+# Fetch categories dynamically from API
+try:
+    categories_res = requests.get(f"{API_URL}/sales/categories", timeout=3)
+    if categories_res.status_code == 200:
+        categories_list = categories_res.json()
+        categories_options = ["All Categories"] + categories_list
+    else:
+        categories_options = ["All Categories", "Beverages", "Snacks", "Packaged Foods", "Household"]
+except Exception:
+    categories_options = ["All Categories", "Beverages", "Snacks", "Packaged Foods", "Household"]
+
+selected_region = st.sidebar.selectbox(
+    "Select Region", 
+    options=regions_options, 
+    help="Filter performance and forecasting metrics by region."
+)
+
+selected_category = st.sidebar.selectbox(
+    "Select Category", 
+    options=categories_options, 
+    help="Filter performance and forecasting metrics by product category."
+)
+
 # --- Main Layout Tabs ---
 tab_kpis, tab_forecasts, tab_ingestion, tab_ai_insights = st.tabs([
     "📈 Sales Performance & KPIs", 
@@ -146,10 +184,12 @@ with tab_kpis:
         if res.status_code == 200:
             kpi_data = res.json()
         else:
+            st.error(f"Error response from API: HTTP {res.status_code}")
             kpi_data = {"total_revenue": 0.0, "total_quantity": 0, "average_unit_price": 0.0, "record_count": 0, "regions_represented": []}
     except Exception as e:
         st.warning("Database unavailable. Displaying cached dashboard indicators.")
         kpi_data = {"total_revenue": 254890.00, "total_quantity": 5120, "average_unit_price": 49.78, "record_count": 120, "regions_represented": ["Northeast", "West"]}
+
 
     # Metric Columns using Custom Premium Cards
     col1, col2, col3, col4 = st.columns(4)
@@ -182,14 +222,36 @@ with tab_kpis:
         </div>
         """, unsafe_allow_html=True)
 
+    if kpi_data['record_count'] == 0:
+        st.info("💡 No sales transactions loaded yet. Head over to the **Ingestion Center** tab to upload your CSV files!")
+
     st.markdown("### Historical Revenue Trend")
-    # Mock visual chart
-    chart_dates = pd.date_range(end=datetime.today(), periods=30)
-    chart_data = pd.DataFrame({
-        "Revenue": [1200, 1400, 1100, 1500, 1600, 1800, 1450, 1650, 1750, 1900, 2100, 1950, 2200, 2300, 2500,
-                    2400, 2600, 2450, 2700, 2800, 2950, 2850, 3100, 3200, 3150, 3400, 3500, 3450, 3600, 3800]
-    }, index=chart_dates)
-    st.area_chart(chart_data, color="#2c5364")
+    # Fetch real trend lines if they exist, else show baseline mock curve
+    try:
+        trends_res = requests.get(f"{API_URL}/sales/trends", params=params)
+        if trends_res.status_code == 200 and len(trends_res.json()) > 0:
+            trends_list = trends_res.json()
+            df_trends = pd.DataFrame(trends_list)
+            df_trends["date"] = pd.to_datetime(df_trends["date"])
+            df_trends = df_trends.set_index("date")
+            df_trends = df_trends.rename(columns={"revenue": "Daily Revenue"})
+            st.area_chart(df_trends["Daily Revenue"], color="#2c5364")
+        else:
+            # Fallback mock visual chart
+            chart_dates = pd.date_range(end=datetime.today(), periods=30)
+            chart_data = pd.DataFrame({
+                "Revenue": [1200, 1400, 1100, 1500, 1600, 1800, 1450, 1650, 1750, 1900, 2100, 1950, 2200, 2300, 2500,
+                            2400, 2600, 2450, 2700, 2800, 2950, 2850, 3100, 3200, 3150, 3400, 3500, 3450, 3600, 3800]
+            }, index=chart_dates)
+            st.area_chart(chart_data, color="#2c5364")
+    except Exception:
+        # Fallback mock visual chart
+        chart_dates = pd.date_range(end=datetime.today(), periods=30)
+        chart_data = pd.DataFrame({
+            "Revenue": [1200, 1400, 1100, 1500, 1600, 1800, 1450, 1650, 1750, 1900, 2100, 1950, 2200, 2300, 2500,
+                        2400, 2600, 2450, 2700, 2800, 2950, 2850, 3100, 3200, 3150, 3400, 3500, 3450, 3600, 3800]
+        }, index=chart_dates)
+        st.area_chart(chart_data, color="#2c5364")
 
 
 # --- TAB 2: Forecasting Engine (Prophet) ---
