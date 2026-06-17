@@ -84,3 +84,38 @@ class ForecastResult(Base):
     predicted_revenue: Mapped[float] = mapped_column(Numeric(14, 2), nullable=False)
     model_version: Mapped[str] = mapped_column(String(50), nullable=False)
     prediction_timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+
+class UploadAudit(Base):
+    """
+    upload_audit table storing audit logs for CSV ingestion processes.
+    """
+    __tablename__ = "upload_audit"
+
+    upload_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    file_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    target_table: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    total_rows: Mapped[int] = mapped_column(Integer, default=0)
+    inserted_rows: Mapped[int] = mapped_column(Integer, default=0)
+    duplicate_rows: Mapped[int] = mapped_column(Integer, default=0)
+    removed_rows: Mapped[int] = mapped_column(Integer, default=0)
+    invalid_rows: Mapped[int] = mapped_column(Integer, default=0)
+    final_loaded_rows: Mapped[int] = mapped_column(Integer, default=0)
+    upload_status: Mapped[str] = mapped_column(String(50), nullable=False)
+    error_message: Mapped[Optional[str]] = mapped_column(String(1000))
+    start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_by: Mapped[str] = mapped_column(String(100), default="system")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+
+class CustomerMaster(Base):
+    """
+    customer_master table storing customer records.
+    """
+    __tablename__ = "customer_master"
+
+    customer_id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    customer_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    email: Mapped[str] = mapped_column(String(100), nullable=False)
+    region: Mapped[str] = mapped_column(String(100), nullable=False, index=True)

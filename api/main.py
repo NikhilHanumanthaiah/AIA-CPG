@@ -9,6 +9,7 @@ from api.config import settings
 from api.routes.sales import router as sales_router
 from api.routes.forecast import router as forecast_router
 from api.routes.insights import router as insights_router
+from api.routes.upload import router as upload_router
 from database.connection import init_db
 
 logger = logging.getLogger(__name__)
@@ -41,6 +42,7 @@ def on_startup():
 app.include_router(sales_router, prefix="/api/v1")
 app.include_router(forecast_router, prefix="/api/v1")
 app.include_router(insights_router, prefix="/api/v1")
+app.include_router(upload_router, prefix="/api/v1")
 
 @app.get("/health", tags=["System"])
 def health_check():

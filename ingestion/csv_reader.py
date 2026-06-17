@@ -9,26 +9,43 @@ class CSVReader:
     Skeleton class for reading source CSV datasets and performing initial schema validation.
     """
     def __init__(self, expected_schemas: Dict[str, List[str]] = None):
-        # Maps dataset names (e.g. 'sales', 'products', 'stores') to list of expected columns
-        self.expected_schemas = expected_schemas or {
-            "sales": [
-                "transaction_id", "transaction_timestamp", "sku_id", 
-                "store_id", "quantity", "unit_price", "currency"
-            ],
-            "products": ["sku_id", "category", "brand", "package_size", "launch_date"],
-            "stores": ["store_id", "region", "state", "city"]
-        }
+        # Maps dataset names to lists of expected columns dynamically derived from SQLAlchemy models
+        if expected_schemas is not None:
+            self.expected_schemas = expected_schemas
+        else:
+            from database.models import (
+                SalesFact,
+                ProductDimension,
+                StoreDimension,
+                CustomerMaster,
+                DateDimension,
+            )
+
+            def get_cols(model) -> List[str]:
+                cols = [c.name for c in model.__table__.columns if not (c.primary_key and c.autoincrement)]
+                # Exclude columns computed during transformation pipelines (like sales revenue)
+                if model.__tablename__ == "fact_sales" and "revenue" in cols:
+                    cols.remove("revenue")
+                return cols
+
+            self.expected_schemas = {
+                "fact_sales": get_cols(SalesFact),
+                "dim_product": get_cols(ProductDimension),
+                "dim_store": get_cols(StoreDimension),
+                "customer_master": get_cols(CustomerMaster),
+                "dim_date": get_cols(DateDimension)
+            }
 
     def read_csv(self, file_path: str, dataset_type: str) -> pd.DataFrame:
         """
         Reads CSV and validates that the schema matches the expected format.
         """
         logger.info("Reading %s CSV from %s", dataset_type, file_path)
-        # Skeleton implementation: Mock pandas DataFrame with expected columns
-        # In actual code: df = pd.read_csv(file_path)
-        # self.validate_schema(df, dataset_type)
-        mock_data = self._generate_mock_data(dataset_type)
-        df = pd.DataFrame(mock_data)
+        try:
+            df = pd.read_csv(file_path)
+        except Exception as e:
+            logger.error("Failed to read CSV from %s: %s", file_path, str(e))
+            raise ValueError(f"Could not read CSV file: {str(e)}")
         
         self.validate_schema(df, dataset_type)
         return df
@@ -64,34 +81,3 @@ class CSVReader:
         }
         logger.info("Data quality report for %s: %s", dataset_type, quality_report)
         return quality_report
-
-    def _generate_mock_data(self, dataset_type: str) -> List[Dict[str, Any]]:
-        """
-        Helper to return skeletal structure for testing before actual files exist.
-        """
-        if dataset_type == "sales":
-            return [{
-                "transaction_id": f"tx_{i}",
-                "transaction_timestamp": "2026-06-17T12:00:00Z",
-                "sku_id": "SKU001",
-                "store_id": "STORE01",
-                "quantity": 10,
-                "unit_price": 5.99,
-                "currency": "USD"
-            } for i in range(5)]
-        elif dataset_type == "products":
-            return [{
-                "sku_id": "SKU001",
-                "category": "Beverages",
-                "brand": "BrandA",
-                "package_size": "12pk",
-                "launch_date": "2024-01-01"
-            }]
-        elif dataset_type == "stores":
-            return [{
-                "store_id": "STORE01",
-                "region": "Northeast",
-                "state": "NY",
-                "city": "New York"
-            }]
-        return []

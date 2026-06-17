@@ -86,6 +86,30 @@ st.markdown("""
         margin: 1.5rem 0;
         box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
     }
+    
+    /* Dynamic Upload Statistics cards styling */
+    .stats-card {
+        background: white;
+        padding: 1.2rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        border: 1px solid #e2e8f0;
+        margin-bottom: 0.5rem;
+        text-align: center;
+    }
+    .stats-title {
+        font-size: 0.75rem;
+        color: #64748b;
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+    }
+    .stats-value {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-top: 0.25rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -97,35 +121,11 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# --- Sidebar Controls ---
-st.sidebar.image("https://img.icons8.com/isometric/100/combo-chart.png", width=60)
-st.sidebar.title("Configuration Panel")
-selected_region = st.sidebar.selectbox("Filter Region", ["All Regions", "Northeast", "Midwest", "South", "West"])
-selected_category = st.sidebar.selectbox("Filter Category", ["All Categories", "Beverages", "Snacks", "Household", "Personal Care"])
-
-st.sidebar.divider()
-st.sidebar.subheader("Inbound Pipelines")
-uploaded_file = st.sidebar.file_uploader("Ingest Sales Transaction CSV", type=["csv"])
-
-if uploaded_file is not None:
-    if st.sidebar.button("Execute Data Ingestion Pipeline", use_container_width=True):
-        with st.spinner("Processing ingestion pipeline..."):
-            try:
-                # Prepare payload
-                files = {"file": (uploaded_file.name, uploaded_file.getvalue(), "text/csv")}
-                res = requests.post(f"{API_URL}/sales/upload", files=files)
-                if res.status_code == 200:
-                    st.sidebar.success("CSV Ingestion Complete!")
-                    st.sidebar.json(res.json())
-                else:
-                    st.sidebar.error(f"Pipeline error: {res.text}")
-            except Exception as e:
-                st.sidebar.error(f"Network error: {str(e)}")
-
 # --- Main Layout Tabs ---
-tab_kpis, tab_forecasts, tab_ai_insights = st.tabs([
+tab_kpis, tab_forecasts, tab_ingestion, tab_ai_insights = st.tabs([
     "📈 Sales Performance & KPIs", 
     "🔮 Forecasting Engine", 
+    "📥 Ingestion Center",
     "🤖 Gemini AI Analyst"
 ])
 
@@ -250,7 +250,163 @@ with tab_forecasts:
             st.line_chart(df_mock, color="#2563eb")
 
 
-# --- TAB 3: Gemini AI Analyst ---
+# --- TAB 3: Ingestion Center ---
+with tab_ingestion:
+    st.subheader("Dynamic CSV Data Ingestion")
+    st.write("Upload business master records or transactions using registry-driven schema matching.")
+
+    # 1. Fetch tables
+    try:
+        tables_res = requests.get(f"{API_URL}/upload/tables")
+        if tables_res.status_code == 200:
+            tables_data = tables_res.json()["tables"]
+        else:
+            tables_data = [
+                {"name": "customer_master", "display_name": "Customer Master"},
+                {"name": "product_master", "display_name": "Product Master"}
+            ]
+    except Exception:
+        tables_data = [
+            {"name": "customer_master", "display_name": "Customer Master"},
+            {"name": "product_master", "display_name": "Product Master"}
+        ]
+
+    # Map display names to names
+    table_display_map = {t["display_name"]: t["name"] for t in tables_data}
+
+    # 2. Render Selection fields
+    col_sel, col_file = st.columns(2)
+    with col_sel:
+        st.markdown("##### 1. Select Target Table")
+        selected_display = st.selectbox(
+            "Target Table",
+            options=["-- Select Table --"] + list(table_display_map.keys()),
+            help="Choose the database table you want to ingest the CSV files into."
+        )
+    with col_file:
+        st.markdown("##### 2. Choose CSV File")
+        uploaded_csv = st.file_uploader("Upload CSV", type=["csv"], help="Limit 200MB. Must conform to target schema.")
+
+    # Ingestion button trigger state
+    btn_disabled = (selected_display == "-- Select Table --" or uploaded_csv is None)
+    
+    col_action = st.columns([1, 4])
+    with col_action[0]:
+        upload_triggered = st.button(
+            "Upload and Process", 
+            disabled=btn_disabled, 
+            type="primary", 
+            use_container_width=True
+        )
+
+    # Placeholders for upload progress and statistics
+    if upload_triggered:
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        status_text.text("Contacting server and validating files...")
+        progress_bar.progress(20)
+        
+        try:
+            target_table_name = table_display_map[selected_display]
+            
+            # Prepare payload
+            files = {"file": (uploaded_csv.name, uploaded_csv.getvalue(), "text/csv")}
+            data = {"target_table": target_table_name}
+            
+            status_text.text("Processing CSV columns, validating schemas and filtering duplicates...")
+            progress_bar.progress(60)
+            
+            res = requests.post(f"{API_URL}/upload/", files=files, data=data)
+            
+            progress_bar.progress(100)
+            if res.status_code == 200:
+                status_text.empty()
+                st.success("Data Ingestion and Auditing Pipeline completed successfully!")
+                
+                # Store statistics in session state
+                st.session_state["last_upload_stats"] = res.json()
+            else:
+                status_text.empty()
+                err_detail = res.json().get("detail", res.text)
+                st.error(f"Ingestion Pipeline Failed: {err_detail}")
+                if "last_upload_stats" in st.session_state:
+                    del st.session_state["last_upload_stats"]
+        except Exception as e:
+            progress_bar.progress(0)
+            status_text.empty()
+            st.error(f"Network error trying to connect to API: {str(e)}")
+
+    # 3. Render Upload Statistics Section
+    if "last_upload_stats" in st.session_state:
+        stats = st.session_state["last_upload_stats"]
+        st.divider()
+        st.markdown("### 📋 Ingestion Summary Audits")
+        
+        # Grid layout for general info
+        col_info1, col_info2, col_info3 = st.columns(3)
+        with col_info1:
+            st.markdown(f"""
+            <div class="stats-card" style="border-left: 5px solid #2563eb;">
+                <div class="stats-title">Target Table</div>
+                <div class="stats-value" style="font-size: 1.25rem;">{stats['table_name']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with col_info2:
+            st.markdown(f"""
+            <div class="stats-card" style="border-left: 5px solid #475569;">
+                <div class="stats-title">File Name</div>
+                <div class="stats-value" style="font-size: 1.25rem;">{stats['file_name']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with col_info3:
+            st.markdown(f"""
+            <div class="stats-card" style="border-left: 5px solid #0d9488;">
+                <div class="stats-title">Processing Duration</div>
+                <div class="stats-value" style="font-size: 1.25rem;">{stats['processing_time_seconds']} seconds</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # Metric count grid
+        col_cnt1, col_cnt2, col_cnt3, col_cnt4, col_cnt5 = st.columns(5)
+        with col_cnt1:
+            st.markdown(f"""
+            <div class="stats-card">
+                <div class="stats-title">Total Records</div>
+                <div class="stats-value">{stats['total_rows']:,}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with col_cnt2:
+            st.markdown(f"""
+            <div class="stats-card" style="background-color: #f0fdf4;">
+                <div class="stats-title" style="color: #15803d;">Inserted Records</div>
+                <div class="stats-value" style="color: #166534;">{stats['inserted_rows']:,}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with col_cnt3:
+            st.markdown(f"""
+            <div class="stats-card" style="background-color: #fffbeb;">
+                <div class="stats-title" style="color: #b45309;">Duplicates Pruned</div>
+                <div class="stats-value" style="color: #92400e;">{stats['duplicate_rows']:,}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with col_cnt4:
+            st.markdown(f"""
+            <div class="stats-card" style="background-color: #fef2f2;">
+                <div class="stats-title" style="color: #b91c1c;">Invalid Rejected</div>
+                <div class="stats-value" style="color: #991b1b;">{stats['invalid_rows']:,}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with col_cnt5:
+            st.markdown(f"""
+            <div class="stats-card" style="background-color: #ecfdf5; border: 1px solid #10b981;">
+                <div class="stats-title" style="color: #047857;">Final Loaded</div>
+                <div class="stats-value" style="color: #065f46;">{stats['final_loaded_rows']:,}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+
+# --- TAB 4: Gemini AI Analyst ---
 with tab_ai_insights:
     st.subheader("Gemini AI Executive Narratives")
     st.write("Generate qualitative analyses of performance metrics and forecasts.")

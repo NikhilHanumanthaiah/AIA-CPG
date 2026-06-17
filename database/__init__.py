@@ -5,6 +5,8 @@ from database.models import (
     DateDimension,
     SalesFact,
     ForecastResult,
+    UploadAudit,
+    CustomerMaster,
 )
 
 __all__ = [
@@ -18,4 +20,6 @@ __all__ = [
     "DateDimension",
     "SalesFact",
     "ForecastResult",
+    "UploadAudit",
+    "CustomerMaster",
 ]
