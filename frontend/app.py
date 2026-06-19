@@ -1,4 +1,5 @@
 import streamlit as st
+import io
 import requests
 import pandas as pd
 from datetime import date, datetime
@@ -381,17 +382,17 @@ with tab_ingestion:
             tables_data = tables_res.json()["tables"]
         else:
             tables_data = [
-                {"name": "customer_master", "display_name": "Customer Master"},
-                {"name": "product_master", "display_name": "Product Master"}
+                {"name": "customer_master", "display_name": "Customer Master", "columns": {}, "required_columns": []},
+                {"name": "product_master", "display_name": "Product Master", "columns": {}, "required_columns": []}
             ]
     except Exception:
         tables_data = [
-            {"name": "customer_master", "display_name": "Customer Master"},
-            {"name": "product_master", "display_name": "Product Master"}
+            {"name": "customer_master", "display_name": "Customer Master", "columns": {}, "required_columns": []},
+            {"name": "product_master", "display_name": "Product Master", "columns": {}, "required_columns": []}
         ]
 
-    # Map display names to names
-    table_display_map = {t["display_name"]: t["name"] for t in tables_data}
+    # Map display names to configuration dicts
+    table_config_map = {t["display_name"]: t for t in tables_data}
 
     # 2. Render Selection fields
     col_sel, col_file = st.columns(2)
@@ -399,14 +400,179 @@ with tab_ingestion:
         st.markdown("##### 1. Select Target Table")
         selected_display = st.selectbox(
             "Target Table",
-            options=["-- Select Table --"] + list(table_display_map.keys()),
+            options=["-- Select Table --"] + list(table_config_map.keys()),
             help="Choose the database table you want to ingest the CSV files into."
         )
     with col_file:
         st.markdown("##### 2. Choose CSV File")
         uploaded_csv = st.file_uploader("Upload CSV", type=["csv"], help="Limit 200MB. Must conform to target schema.")
 
-    # Ingestion button trigger state
+    column_mapping = {}
+    data_types = {}
+    dq_rules = {}
+
+    if selected_display != "-- Select Table --" and uploaded_csv is not None:
+        target_config = table_config_map[selected_display]
+        target_table_name = target_config["name"]
+        target_columns = target_config.get("columns", {})
+        required_cols = target_config.get("required_columns", [])
+
+        try:
+            df_preview = pd.read_csv(io.BytesIO(uploaded_csv.getvalue()), nrows=5)
+            csv_cols = list(df_preview.columns)
+            
+            st.divider()
+            st.markdown("### 🛠️ Ingestion Configuration & Data Mapping")
+            st.write("Match headers, override data types, and configure data validation checks.")
+
+            with st.expander("👀 Raw CSV Preview (First 5 Rows)", expanded=False):
+                st.dataframe(df_preview, use_container_width=True)
+
+            col_a, col_b = st.columns(2)
+            with col_a:
+                with st.expander("🔗 Step A: Column Schema Mapping", expanded=True):
+                    st.write("Map target database columns to CSV headers:")
+                    for target_col in target_columns.keys():
+                        is_required = target_col in required_cols
+                        label = f"{target_col} {'(Required)' if is_required else '(Optional)'}"
+                        
+                        default_idx = 0
+                        for idx, ccol in enumerate(csv_cols):
+                            if ccol.lower() == target_col.lower() or ccol.lower().replace("_id", "") == target_col.lower().replace("_id", ""):
+                                default_idx = idx
+                                break
+                        
+                        selected_csv_col = st.selectbox(
+                            f"Database field: `{target_col}` maps to:",
+                            options=csv_cols,
+                            index=default_idx,
+                            key=f"map_{target_col}"
+                        )
+                        column_mapping[target_col] = selected_csv_col
+
+            with col_b:
+                with st.expander("🔄 Step B: Data Type Overrides", expanded=True):
+                    st.write("Override default expected database types:")
+                    type_options = ["registry default", "str", "int", "float", "date", "datetime"]
+                    for target_col, reg_type in target_columns.items():
+                        selected_type = st.selectbox(
+                            f"Field `{target_col}` (Expected: `{reg_type}`)",
+                            options=type_options,
+                            index=0,
+                            key=f"type_{target_col}"
+                        )
+                        if selected_type != "registry default":
+                            data_types[target_col] = selected_type
+
+            with st.expander("🛡️ Step C: Data Quality Validation Rules", expanded=True):
+                st.write("Enforce custom quality checks and sanitization rules:")
+                dq_rules["deduplicate"] = st.checkbox(
+                    "Prune duplicate records (deduplicate against file entries & database logs)",
+                    value=True
+                )
+                
+                if target_table_name == "fact_sales":
+                    dq_rules["currency_normalize"] = st.checkbox(
+                        "Standardize Currency (auto-convert non-USD currencies EUR, GBP, CAD to USD)",
+                        value=True
+                    )
+                    dq_rules["calculate_revenue"] = st.checkbox(
+                        "Calculate missing sales revenue (Qty × Unit Price)",
+                        value=True
+                    )
+
+                st.write("---")
+                st.write("Column-specific validation rules:")
+                
+                # Column headers for the rule assignment grid
+                c_head_name, c_head_rule, c_head_val = st.columns([1, 1, 1])
+                with c_head_name:
+                    st.markdown("**Column Name**")
+                with c_head_rule:
+                    st.markdown("**Validation Rule**")
+                with c_head_val:
+                    st.markdown("**Rule Parameters / Values**")
+                st.write("---")
+                
+                for target_col, col_type in target_columns.items():
+                    # Determine options based on column type
+                    if col_type in ("int", "float", "INTEGER", "Numeric", "NUMERIC", "int64", "float64"):
+                        rule_options = ["Positive Only", "Non-negative", "Min Value Limit", "Upper Bound Limit"]
+                    elif col_type in ("str", "string", "object", "VARCHAR", "TEXT"):
+                        rule_options = ["Email Format", "Minimum Length", "Maximum Length", "Allowed Options"]
+                    else:
+                        rule_options = []
+                        
+                    col_rules = []
+                    
+                    c_name, c_rule, c_val = st.columns([1, 1, 1])
+                    with c_name:
+                        st.write(f"`{target_col}` ({col_type})")
+                    with c_rule:
+                        sel_rules = st.multiselect(
+                            f"Rule Selection for {target_col}",
+                            options=rule_options,
+                            key=f"dq_rule_sel_{target_col}",
+                            label_visibility="collapsed"
+                        )
+                    with c_val:
+                        for rule in sel_rules:
+                            if rule == "Positive Only":
+                                col_rules.append("positive")
+                                st.caption("Strictly > 0")
+                            elif rule == "Non-negative":
+                                col_rules.append("non_negative")
+                                st.caption("Non-negative (>= 0)")
+                            elif rule == "Min Value Limit":
+                                min_val = st.number_input(
+                                    f"Min limit value for {target_col}",
+                                    value=0.0,
+                                    key=f"dq_val_min_{target_col}"
+                                )
+                                col_rules.append(f"min_val:{min_val}")
+                            elif rule == "Upper Bound Limit":
+                                max_val = st.number_input(
+                                    f"Upper limit value for {target_col}",
+                                    value=0.0,
+                                    key=f"dq_val_max_{target_col}"
+                                )
+                                col_rules.append(f"max_val:{max_val}")
+                            elif rule == "Email Format":
+                                col_rules.append("email")
+                                st.caption("Valid email format")
+                            elif rule == "Minimum Length":
+                                min_len = st.number_input(
+                                    f"Min character length of {target_col}",
+                                    min_value=0,
+                                    value=0,
+                                    step=1,
+                                    key=f"dq_val_minlen_{target_col}"
+                                )
+                                col_rules.append(f"min_length:{min_len}")
+                            elif rule == "Maximum Length":
+                                max_len = st.number_input(
+                                    f"Max character length of {target_col}",
+                                    min_value=0,
+                                    value=0,
+                                    step=1,
+                                    key=f"dq_val_maxlen_{target_col}"
+                                )
+                                col_rules.append(f"max_length:{max_len}")
+                            elif rule == "Allowed Options":
+                                allowed_opts = st.text_input(
+                                    f"Allowed options for {target_col}",
+                                    value="",
+                                    key=f"dq_val_opts_{target_col}",
+                                    placeholder="Comma-separated values"
+                                )
+                                if allowed_opts.strip():
+                                    col_rules.append(f"allowed_options:{allowed_opts.strip()}")
+                            
+                    if col_rules:
+                        dq_rules[target_col] = col_rules
+        except Exception as ex:
+            st.error(f"Failed to parse uploaded CSV schema preview: {str(ex)}")
+
     btn_disabled = (selected_display == "-- Select Table --" or uploaded_csv is None)
     
     col_action = st.columns([1, 4])
@@ -427,11 +593,18 @@ with tab_ingestion:
         progress_bar.progress(20)
         
         try:
-            target_table_name = table_display_map[selected_display]
+            target_table_name = table_config_map[selected_display]["name"]
             
             # Prepare payload
             files = {"file": (uploaded_csv.name, uploaded_csv.getvalue(), "text/csv")}
-            data = {"target_table": target_table_name}
+            
+            import json
+            data = {
+                "target_table": target_table_name,
+                "column_mapping": json.dumps(column_mapping) if column_mapping else None,
+                "data_types": json.dumps(data_types) if data_types else None,
+                "dq_rules": json.dumps(dq_rules) if dq_rules else None
+            }
             
             status_text.text("Processing CSV columns, validating schemas and filtering duplicates...")
             progress_bar.progress(60)
@@ -442,8 +615,6 @@ with tab_ingestion:
             if res.status_code == 200:
                 status_text.empty()
                 st.success("Data Ingestion and Auditing Pipeline completed successfully!")
-                
-                # Store statistics in session state
                 st.session_state["last_upload_stats"] = res.json()
             else:
                 status_text.empty()
@@ -523,6 +694,19 @@ with tab_ingestion:
                 <div class="stats-value" style="color: #065f46;">{stats['final_loaded_rows']:,}</div>
             </div>
             """, unsafe_allow_html=True)
+
+        val_errors = stats.get("validation_errors", [])
+        if val_errors:
+            st.divider()
+            st.warning(f"⚠️ Skipped {len(val_errors)} invalid records due to validation rule warnings:")
+            df_warnings = pd.DataFrame(val_errors)
+            df_warnings = df_warnings.rename(columns={
+                "row_index": "CSV Row",
+                "column": "Database Column",
+                "value": "Raw Value",
+                "reason": "Warning Reason"
+            })
+            st.dataframe(df_warnings, use_container_width=True)
 
 
 # --- TAB 4: Gemini AI Analyst ---

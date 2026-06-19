@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 from datetime import datetime
 
@@ -13,9 +13,17 @@ router = APIRouter(prefix="/upload", tags=["Data Upload Control"])
 class TableItem(BaseModel):
     name: str
     display_name: str
+    columns: Dict[str, str] = {}
+    required_columns: List[str] = []
 
 class SupportedTablesResponse(BaseModel):
     tables: List[TableItem]
+
+class ValidationErrorDetail(BaseModel):
+    row_index: int
+    column: str
+    value: Optional[str] = None
+    reason: str
 
 class UploadStatisticsResponse(BaseModel):
     status: str
@@ -30,6 +38,7 @@ class UploadStatisticsResponse(BaseModel):
     start_time: str
     end_time: str
     processing_time_seconds: int
+    validation_errors: List[ValidationErrorDetail] = []
 
 # --- API Endpoints ---
 @router.get("/tables", response_model=SupportedTablesResponse)
@@ -44,6 +53,9 @@ def get_uploadable_tables():
 async def process_file_upload(
     file: UploadFile = File(...),
     target_table: str = Form(...),
+    column_mapping: Optional[str] = Form(None),
+    data_types: Optional[str] = Form(None),
+    dq_rules: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
     """
@@ -61,7 +73,10 @@ async def process_file_upload(
             db=db,
             file_name=file.filename,
             file_content=content,
-            target_table=target_table
+            target_table=target_table,
+            column_mapping=column_mapping,
+            data_types=data_types,
+            dq_rules=dq_rules
         )
         return UploadStatisticsResponse(**stats)
     except ValueError as ve:
