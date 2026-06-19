@@ -303,13 +303,7 @@ with tab_forecasts:
             st.write(f"Forecast model version: `{forecast_list[0]['model_version']}`")
             st.line_chart(df_forecast[["predicted_revenue"]], color="#2563eb")
         else:
-            # Fallback mock visual
-            st.info("Displaying simulated baseline forecast (run forecast to write values).")
-            forecast_dates = pd.date_range(start=datetime.today(), periods=days_to_predict)
-            df_mock = pd.DataFrame({
-                "Forecasted Revenue": [3800 + (i * 45) + (i % 7) * 150 for i in range(1, days_to_predict + 1)]
-            }, index=forecast_dates)
-            st.line_chart(df_mock, color="#2563eb")
+            st.info("💡 No forecast projections have been generated yet for this selection. Click the **Generate Revenue Forecast** button above to run the predictive pipeline and display the results.")
 
         # Clear Legend and Note Explanations
         st.markdown("""
