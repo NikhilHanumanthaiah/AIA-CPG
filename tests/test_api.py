@@ -118,3 +118,66 @@ def test_execute_natural_query(client: TestClient, db_session: Session):
     assert len(data["results"]) > 0
 
 
+def test_forecast_flow(client: TestClient, db_session: Session):
+    """
+    Tests POST /api/v1/forecast/run and GET /api/v1/forecast/ endpoints.
+    """
+    from datetime import timedelta
+    # 1. Populate test sales data
+    prod = ProductDimension(sku_id="SKU100", category="Dairy", brand="BrandD")
+    store = StoreDimension(store_id="STORE100", region="West", state="CA", city="San Jose")
+    db_session.add_all([prod, store])
+    db_session.commit()
+
+    base_time = datetime.utcnow()
+    # Add at least 2 sales records to check basic prepare_data / group_by logic
+    sale1 = SalesFact(
+        transaction_id="TXN101",
+        transaction_timestamp=base_time - timedelta(days=1),
+        sku_id="SKU100",
+        store_id="STORE100",
+        quantity=5,
+        unit_price=10.00,
+        revenue=50.00,
+        currency="USD"
+    )
+    sale2 = SalesFact(
+        transaction_id="TXN102",
+        transaction_timestamp=base_time,
+        sku_id="SKU100",
+        store_id="STORE100",
+        quantity=6,
+        unit_price=10.00,
+        revenue=60.00,
+        currency="USD"
+    )
+    db_session.add_all([sale1, sale2])
+    db_session.commit()
+
+    # Trigger forecast run via POST
+    payload = {
+        "days_to_predict": 7,
+        "region": "West",
+        "category": "Dairy"
+    }
+    response = client.post("/api/v1/forecast/run", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert "Successfully generated" in data["message"]
+    assert data["region_filtered"] == "West"
+    assert data["category_filtered"] == "Dairy"
+
+    # Verify that GET /api/v1/forecast/ retrieves the results
+    get_res = client.get("/api/v1/forecast/?region=West&category=Dairy")
+    assert get_res.status_code == 200
+    forecast_data = get_res.json()
+    assert len(forecast_data) == 7
+    for item in forecast_data:
+        assert item["region"] == "West"
+        assert item["category"] == "Dairy"
+        assert "predicted_revenue" in item
+        assert "forecast_date" in item
+
+
+
