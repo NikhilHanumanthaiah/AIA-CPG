@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from typing import Generator
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker, Session
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 from api.config import settings
 
@@ -18,15 +18,12 @@ engine = create_engine(
     echo=settings.DEBUG,
     pool_pre_ping=True,  # Test connections before using them to prevent stale connections
     pool_size=10,
-    max_overflow=20
+    max_overflow=20,
 )
 
 # Sessionmaker configured for SQLAlchemy 2.x transactions
-SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine
-)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 
 def init_db() -> None:
     """
@@ -40,6 +37,7 @@ def init_db() -> None:
     except Exception as e:
         logger.error("Error creating database tables: %s", str(e))
         raise
+
 
 @contextmanager
 def get_db_session() -> Generator[Session, None, None]:

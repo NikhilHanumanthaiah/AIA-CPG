@@ -1,23 +1,25 @@
-import streamlit as st
 import io
-import requests
-import pandas as pd
-from datetime import date, datetime
 import os
+from datetime import date, datetime
+
+import pandas as pd
+import requests
+import streamlit as st
 
 # Set page configurations with professional analytics title and layout
 st.set_page_config(
     page_title="CPG Revenue Analytics & Forecasting",
     page_icon="📊",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
 # Fetch backend API URL from environment configuration
 API_URL = os.getenv("API_URL", "http://localhost:8000/api/v1")
 
 # --- Custom CSS styling for premium look (Inter Font, Card styling, Sleek Gradients) ---
-st.markdown("""
+st.markdown(
+    """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
     
@@ -112,15 +114,20 @@ st.markdown("""
         margin-top: 0.25rem;
     }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 # --- App Header Banner ---
-st.markdown("""
+st.markdown(
+    """
 <div class="header-container">
     <div class="header-title">📊 CPG Executive Sales Control Center</div>
     <div class="header-subtitle">Real-time revenue indicators, automated Prophet forecasting, and Gemini AI narratives</div>
 </div>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 # --- Sidebar Navigation & Filters ---
 st.sidebar.header("🎛️ Control Panel")
@@ -144,87 +151,128 @@ try:
         categories_list = categories_res.json()
         categories_options = ["All Categories"] + categories_list
     else:
-        categories_options = ["All Categories", "Beverages", "Snacks", "Packaged Foods", "Household"]
+        categories_options = [
+            "All Categories",
+            "Beverages",
+            "Snacks",
+            "Packaged Foods",
+            "Household",
+        ]
 except Exception:
-    categories_options = ["All Categories", "Beverages", "Snacks", "Packaged Foods", "Household"]
+    categories_options = [
+        "All Categories",
+        "Beverages",
+        "Snacks",
+        "Packaged Foods",
+        "Household",
+    ]
 
 selected_region = st.sidebar.selectbox(
-    "Select Region", 
-    options=regions_options, 
-    help="Filter performance and forecasting metrics by region."
+    "Select Region",
+    options=regions_options,
+    help="Filter performance and forecasting metrics by region.",
 )
 
 selected_category = st.sidebar.selectbox(
-    "Select Category", 
-    options=categories_options, 
-    help="Filter performance and forecasting metrics by product category."
+    "Select Category",
+    options=categories_options,
+    help="Filter performance and forecasting metrics by product category.",
 )
 
 # --- Main Layout Tabs ---
-tab_kpis, tab_forecasts, tab_ingestion, tab_ai_insights = st.tabs([
-    "📈 Sales Performance & KPIs", 
-    "🔮 Forecasting Engine", 
-    "📥 Ingestion Center",
-    "🤖 Gemini AI Analyst"
-])
+tab_kpis, tab_forecasts, tab_ingestion, tab_ai_insights = st.tabs(
+    [
+        "📈 Sales Performance & KPIs",
+        "🔮 Forecasting Engine",
+        "📥 Ingestion Center",
+        "🤖 Gemini AI Analyst",
+    ]
+)
 
 # --- TAB 1: Sales Performance & KPIs ---
 with tab_kpis:
     st.subheader("Key Performance Metrics")
-    
+
     # Trigger API Call for KPIs
     try:
         region_param = None if selected_region == "All Regions" else selected_region
         cat_param = None if selected_category == "All Categories" else selected_category
-        
+
         params = {}
-        if region_param: params["region"] = region_param
-        if cat_param: params["category"] = cat_param
-        
+        if region_param:
+            params["region"] = region_param
+        if cat_param:
+            params["category"] = cat_param
+
         res = requests.get(f"{API_URL}/sales/kpis", params=params)
         if res.status_code == 200:
             kpi_data = res.json()
         else:
             st.error(f"Error response from API: HTTP {res.status_code}")
-            kpi_data = {"total_revenue": 0.0, "total_quantity": 0, "average_unit_price": 0.0, "record_count": 0, "regions_represented": []}
+            kpi_data = {
+                "total_revenue": 0.0,
+                "total_quantity": 0,
+                "average_unit_price": 0.0,
+                "record_count": 0,
+                "regions_represented": [],
+            }
     except Exception as e:
         st.warning("Database unavailable. Displaying cached dashboard indicators.")
-        kpi_data = {"total_revenue": 254890.00, "total_quantity": 5120, "average_unit_price": 49.78, "record_count": 120, "regions_represented": ["Northeast", "West"]}
-
+        kpi_data = {
+            "total_revenue": 254890.00,
+            "total_quantity": 5120,
+            "average_unit_price": 49.78,
+            "record_count": 120,
+            "regions_represented": ["Northeast", "West"],
+        }
 
     # Metric Columns using Custom Premium Cards
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.markdown(f"""
+        st.markdown(
+            f"""
         <div class="metric-card">
             <div class="metric-label">Total Revenue</div>
             <div class="metric-value">${kpi_data['total_revenue']:,.2f}</div>
         </div>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
     with col2:
-        st.markdown(f"""
+        st.markdown(
+            f"""
         <div class="metric-card">
             <div class="metric-label">Total Volume Sold</div>
             <div class="metric-value">{kpi_data['total_quantity']:,} units</div>
         </div>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
     with col3:
-        st.markdown(f"""
+        st.markdown(
+            f"""
         <div class="metric-card">
             <div class="metric-label">Average Unit Price</div>
             <div class="metric-value">${kpi_data['average_unit_price']:.2f}</div>
         </div>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
     with col4:
-        st.markdown(f"""
+        st.markdown(
+            f"""
         <div class="metric-card">
             <div class="metric-label">Ingested Records</div>
             <div class="metric-value">{kpi_data['record_count']:,}</div>
         </div>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
 
-    if kpi_data['record_count'] == 0:
-        st.info("💡 No sales transactions loaded yet. Head over to the **Ingestion Center** tab to upload your CSV files!")
+    if kpi_data["record_count"] == 0:
+        st.info(
+            "💡 No sales transactions loaded yet. Head over to the **Ingestion Center** tab to upload your CSV files!"
+        )
 
     st.markdown("### Historical Revenue Trend")
     # Fetch real trend lines if they exist, else show baseline mock curve
@@ -240,38 +288,116 @@ with tab_kpis:
         else:
             # Fallback mock visual chart
             chart_dates = pd.date_range(end=datetime.today(), periods=30)
-            chart_data = pd.DataFrame({
-                "Revenue": [1200, 1400, 1100, 1500, 1600, 1800, 1450, 1650, 1750, 1900, 2100, 1950, 2200, 2300, 2500,
-                            2400, 2600, 2450, 2700, 2800, 2950, 2850, 3100, 3200, 3150, 3400, 3500, 3450, 3600, 3800]
-            }, index=chart_dates)
+            chart_data = pd.DataFrame(
+                {
+                    "Revenue": [
+                        1200,
+                        1400,
+                        1100,
+                        1500,
+                        1600,
+                        1800,
+                        1450,
+                        1650,
+                        1750,
+                        1900,
+                        2100,
+                        1950,
+                        2200,
+                        2300,
+                        2500,
+                        2400,
+                        2600,
+                        2450,
+                        2700,
+                        2800,
+                        2950,
+                        2850,
+                        3100,
+                        3200,
+                        3150,
+                        3400,
+                        3500,
+                        3450,
+                        3600,
+                        3800,
+                    ]
+                },
+                index=chart_dates,
+            )
             st.area_chart(chart_data, color="#2c5364")
     except Exception:
         # Fallback mock visual chart
         chart_dates = pd.date_range(end=datetime.today(), periods=30)
-        chart_data = pd.DataFrame({
-            "Revenue": [1200, 1400, 1100, 1500, 1600, 1800, 1450, 1650, 1750, 1900, 2100, 1950, 2200, 2300, 2500,
-                        2400, 2600, 2450, 2700, 2800, 2950, 2850, 3100, 3200, 3150, 3400, 3500, 3450, 3600, 3800]
-        }, index=chart_dates)
+        chart_data = pd.DataFrame(
+            {
+                "Revenue": [
+                    1200,
+                    1400,
+                    1100,
+                    1500,
+                    1600,
+                    1800,
+                    1450,
+                    1650,
+                    1750,
+                    1900,
+                    2100,
+                    1950,
+                    2200,
+                    2300,
+                    2500,
+                    2400,
+                    2600,
+                    2450,
+                    2700,
+                    2800,
+                    2950,
+                    2850,
+                    3100,
+                    3200,
+                    3150,
+                    3400,
+                    3500,
+                    3450,
+                    3600,
+                    3800,
+                ]
+            },
+            index=chart_dates,
+        )
         st.area_chart(chart_data, color="#2c5364")
 
 
 # --- TAB 2: Forecasting Engine (Prophet) ---
 with tab_forecasts:
     st.subheader("FB Prophet Demand Projections & AI Forecast Interpretation")
-    
+
     col_left, col_right = st.columns(2)
     with col_left:
         st.markdown("### 🔮 Demand Projection Model")
-        st.write("Configure and trigger the 30-day forecast pipeline based on historical data.")
+        st.write(
+            "Configure and trigger the 30-day forecast pipeline based on historical data."
+        )
         days_to_predict = st.slider("Forecast Horizon (Days)", 7, 90, 30)
-        
-        if st.button("Generate Revenue Forecast", type="primary", use_container_width=True):
+
+        if st.button(
+            "Generate Revenue Forecast", type="primary", use_container_width=True
+        ):
             with st.spinner("Executing Prophet Model..."):
                 try:
                     payload = {
                         "days_to_predict": days_to_predict,
-                        "region": None if selected_region == "All Regions" else selected_region,
-                        "category": None if selected_category == "All Categories" else selected_category
+                        "region": (
+                            None
+                            if selected_region == "All Regions"
+                            else selected_region
+                        ),
+                        "category": (
+                            None
+                            if selected_category == "All Categories"
+                            else selected_category
+                        ),
                     }
                     res = requests.post(f"{API_URL}/forecast/run", json=payload)
                     if res.status_code == 200:
@@ -280,15 +406,19 @@ with tab_forecasts:
                         st.error("Model failure on API.")
                 except Exception as e:
                     st.error(f"Failed to connect to API: {str(e)}")
-                    
+
         # Fetch existing forecast
         try:
             r_param = None if selected_region == "All Regions" else selected_region
-            c_param = None if selected_category == "All Categories" else selected_category
+            c_param = (
+                None if selected_category == "All Categories" else selected_category
+            )
             params = {}
-            if r_param: params["region"] = r_param
-            if c_param: params["category"] = c_param
-            
+            if r_param:
+                params["region"] = r_param
+            if c_param:
+                params["category"] = c_param
+
             res = requests.get(f"{API_URL}/forecast/", params=params)
             if res.status_code == 200:
                 forecast_list = res.json()
@@ -296,7 +426,7 @@ with tab_forecasts:
                 forecast_list = []
         except Exception:
             forecast_list = []
-            
+
         if forecast_list:
             df_forecast = pd.DataFrame(forecast_list)
             df_forecast["forecast_date"] = pd.to_datetime(df_forecast["forecast_date"])
@@ -304,10 +434,13 @@ with tab_forecasts:
             st.write(f"Forecast model version: `{forecast_list[0]['model_version']}`")
             st.line_chart(df_forecast[["predicted_revenue"]], color="#2563eb")
         else:
-            st.info("💡 No forecast projections have been generated yet for this selection. Click the **Generate Revenue Forecast** button above to run the predictive pipeline and display the results.")
+            st.info(
+                "💡 No forecast projections have been generated yet for this selection. Click the **Generate Revenue Forecast** button above to run the predictive pipeline and display the results."
+            )
 
         # Clear Legend and Note Explanations
-        st.markdown("""
+        st.markdown(
+            """
         <div style="background-color: #f8fafc; padding: 1.25rem; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 1rem;">
             <strong style="color: #0f172a; font-size: 0.95rem;">📊 Chart Legend & Info:</strong>
             <ul style="margin-top: 0.5rem; margin-bottom: 0.5rem; font-size: 0.85rem; color: #475569; padding-left: 1.2rem;">
@@ -319,29 +452,46 @@ with tab_forecasts:
                 <em><strong>Model Note:</strong> This model performs time-series forecasting. It learns general growth trajectory lines and weekly cyclical patterns from completed sales transactions, then extrapolates them forward to support CPG supply chain and demand planning operations.</em>
             </p>
         </div>
-        """, unsafe_allow_html=True)
-                    
+        """,
+            unsafe_allow_html=True,
+        )
+
     with col_right:
         st.markdown("### 🤖 AI Analyst Insights")
-        st.write("Generate qualitative narratives based on current filter configurations.")
-        
+        st.write(
+            "Generate qualitative narratives based on current filter configurations."
+        )
+
         st.markdown("#### 1. AI Performance Summary")
         if st.button("Generate Sales Summary", use_container_width=True):
             with st.spinner("Querying Gemini Client..."):
                 try:
                     payload = {
-                        "region": None if selected_region == "All Regions" else selected_region,
-                        "category": None if selected_category == "All Categories" else selected_category
+                        "region": (
+                            None
+                            if selected_region == "All Regions"
+                            else selected_region
+                        ),
+                        "category": (
+                            None
+                            if selected_category == "All Categories"
+                            else selected_category
+                        ),
                     }
-                    res = requests.post(f"{API_URL}/insights/sales-summary", json=payload)
+                    res = requests.post(
+                        f"{API_URL}/insights/sales-summary", json=payload
+                    )
                     if res.status_code == 200:
                         narrative = res.json()["narrative"]
-                        st.markdown(f"""
+                        st.markdown(
+                            f"""
                         <div class="ai-insight-box">
                             <strong>Sales Narrative Summary:</strong><br><br>
                             {narrative.replace(chr(10), '<br>')}
                         </div>
-                        """, unsafe_allow_html=True)
+                        """,
+                            unsafe_allow_html=True,
+                        )
                     else:
                         st.error("Failed to generate AI performance insight.")
                 except Exception as e:
@@ -352,18 +502,31 @@ with tab_forecasts:
             with st.spinner("Querying Gemini Client..."):
                 try:
                     payload = {
-                        "region": None if selected_region == "All Regions" else selected_region,
-                        "category": None if selected_category == "All Categories" else selected_category
+                        "region": (
+                            None
+                            if selected_region == "All Regions"
+                            else selected_region
+                        ),
+                        "category": (
+                            None
+                            if selected_category == "All Categories"
+                            else selected_category
+                        ),
                     }
-                    res = requests.post(f"{API_URL}/insights/forecast-explanation", json=payload)
+                    res = requests.post(
+                        f"{API_URL}/insights/forecast-explanation", json=payload
+                    )
                     if res.status_code == 200:
                         narrative = res.json()["narrative"]
-                        st.markdown(f"""
+                        st.markdown(
+                            f"""
                         <div class="ai-insight-box">
                             <strong>Forecast Strategic Plan:</strong><br><br>
                             {narrative.replace(chr(10), '<br>')}
                         </div>
-                        """, unsafe_allow_html=True)
+                        """,
+                            unsafe_allow_html=True,
+                        )
                     else:
                         st.error("Failed to generate AI forecast explanation.")
                 except Exception as e:
@@ -373,7 +536,9 @@ with tab_forecasts:
 # --- TAB 3: Ingestion Center ---
 with tab_ingestion:
     st.subheader("Dynamic CSV Data Ingestion")
-    st.write("Upload business master records or transactions using registry-driven schema matching.")
+    st.write(
+        "Upload business master records or transactions using registry-driven schema matching."
+    )
 
     # 1. Fetch tables
     try:
@@ -382,13 +547,33 @@ with tab_ingestion:
             tables_data = tables_res.json()["tables"]
         else:
             tables_data = [
-                {"name": "customer_master", "display_name": "Customer Master", "columns": {}, "required_columns": []},
-                {"name": "product_master", "display_name": "Product Master", "columns": {}, "required_columns": []}
+                {
+                    "name": "customer_master",
+                    "display_name": "Customer Master",
+                    "columns": {},
+                    "required_columns": [],
+                },
+                {
+                    "name": "product_master",
+                    "display_name": "Product Master",
+                    "columns": {},
+                    "required_columns": [],
+                },
             ]
     except Exception:
         tables_data = [
-            {"name": "customer_master", "display_name": "Customer Master", "columns": {}, "required_columns": []},
-            {"name": "product_master", "display_name": "Product Master", "columns": {}, "required_columns": []}
+            {
+                "name": "customer_master",
+                "display_name": "Customer Master",
+                "columns": {},
+                "required_columns": [],
+            },
+            {
+                "name": "product_master",
+                "display_name": "Product Master",
+                "columns": {},
+                "required_columns": [],
+            },
         ]
 
     # Map display names to configuration dicts
@@ -401,11 +586,15 @@ with tab_ingestion:
         selected_display = st.selectbox(
             "Target Table",
             options=["-- Select Table --"] + list(table_config_map.keys()),
-            help="Choose the database table you want to ingest the CSV files into."
+            help="Choose the database table you want to ingest the CSV files into.",
         )
     with col_file:
         st.markdown("##### 2. Choose CSV File")
-        uploaded_csv = st.file_uploader("Upload CSV", type=["csv"], help="Limit 200MB. Must conform to target schema.")
+        uploaded_csv = st.file_uploader(
+            "Upload CSV",
+            type=["csv"],
+            help="Limit 200MB. Must conform to target schema.",
+        )
 
     column_mapping = {}
     data_types = {}
@@ -420,10 +609,12 @@ with tab_ingestion:
         try:
             df_preview = pd.read_csv(io.BytesIO(uploaded_csv.getvalue()), nrows=5)
             csv_cols = list(df_preview.columns)
-            
+
             st.divider()
             st.markdown("### 🛠️ Ingestion Configuration & Data Mapping")
-            st.write("Match headers, override data types, and configure data validation checks.")
+            st.write(
+                "Match headers, override data types, and configure data validation checks."
+            )
 
             with st.expander("👀 Raw CSV Preview (First 5 Rows)", expanded=False):
                 st.dataframe(df_preview, use_container_width=True)
@@ -435,31 +626,42 @@ with tab_ingestion:
                     for target_col in target_columns.keys():
                         is_required = target_col in required_cols
                         label = f"{target_col} {'(Required)' if is_required else '(Optional)'}"
-                        
+
                         default_idx = 0
                         for idx, ccol in enumerate(csv_cols):
-                            if ccol.lower() == target_col.lower() or ccol.lower().replace("_id", "") == target_col.lower().replace("_id", ""):
+                            if (
+                                ccol.lower() == target_col.lower()
+                                or ccol.lower().replace("_id", "")
+                                == target_col.lower().replace("_id", "")
+                            ):
                                 default_idx = idx
                                 break
-                        
+
                         selected_csv_col = st.selectbox(
                             f"Database field: `{target_col}` maps to:",
                             options=csv_cols,
                             index=default_idx,
-                            key=f"map_{target_col}"
+                            key=f"map_{target_col}",
                         )
                         column_mapping[target_col] = selected_csv_col
 
             with col_b:
                 with st.expander("🔄 Step B: Data Type Overrides", expanded=True):
                     st.write("Override default expected database types:")
-                    type_options = ["registry default", "str", "int", "float", "date", "datetime"]
+                    type_options = [
+                        "registry default",
+                        "str",
+                        "int",
+                        "float",
+                        "date",
+                        "datetime",
+                    ]
                     for target_col, reg_type in target_columns.items():
                         selected_type = st.selectbox(
                             f"Field `{target_col}` (Expected: `{reg_type}`)",
                             options=type_options,
                             index=0,
-                            key=f"type_{target_col}"
+                            key=f"type_{target_col}",
                         )
                         if selected_type != "registry default":
                             data_types[target_col] = selected_type
@@ -468,22 +670,21 @@ with tab_ingestion:
                 st.write("Enforce custom quality checks and sanitization rules:")
                 dq_rules["deduplicate"] = st.checkbox(
                     "Prune duplicate records (deduplicate against file entries & database logs)",
-                    value=True
+                    value=True,
                 )
-                
+
                 if target_table_name == "fact_sales":
                     dq_rules["currency_normalize"] = st.checkbox(
                         "Standardize Currency (auto-convert non-USD currencies EUR, GBP, CAD to USD)",
-                        value=True
+                        value=True,
                     )
                     dq_rules["calculate_revenue"] = st.checkbox(
-                        "Calculate missing sales revenue (Qty × Unit Price)",
-                        value=True
+                        "Calculate missing sales revenue (Qty × Unit Price)", value=True
                     )
 
                 st.write("---")
                 st.write("Column-specific validation rules:")
-                
+
                 # Column headers for the rule assignment grid
                 c_head_name, c_head_rule, c_head_val = st.columns([1, 1, 1])
                 with c_head_name:
@@ -493,18 +694,36 @@ with tab_ingestion:
                 with c_head_val:
                     st.markdown("**Rule Parameters / Values**")
                 st.write("---")
-                
+
                 for target_col, col_type in target_columns.items():
                     # Determine options based on column type
-                    if col_type in ("int", "float", "INTEGER", "Numeric", "NUMERIC", "int64", "float64"):
-                        rule_options = ["Positive Only", "Non-negative", "Min Value Limit", "Upper Bound Limit"]
+                    if col_type in (
+                        "int",
+                        "float",
+                        "INTEGER",
+                        "Numeric",
+                        "NUMERIC",
+                        "int64",
+                        "float64",
+                    ):
+                        rule_options = [
+                            "Positive Only",
+                            "Non-negative",
+                            "Min Value Limit",
+                            "Upper Bound Limit",
+                        ]
                     elif col_type in ("str", "string", "object", "VARCHAR", "TEXT"):
-                        rule_options = ["Email Format", "Minimum Length", "Maximum Length", "Allowed Options"]
+                        rule_options = [
+                            "Email Format",
+                            "Minimum Length",
+                            "Maximum Length",
+                            "Allowed Options",
+                        ]
                     else:
                         rule_options = []
-                        
+
                     col_rules = []
-                    
+
                     c_name, c_rule, c_val = st.columns([1, 1, 1])
                     with c_name:
                         st.write(f"`{target_col}` ({col_type})")
@@ -513,7 +732,7 @@ with tab_ingestion:
                             f"Rule Selection for {target_col}",
                             options=rule_options,
                             key=f"dq_rule_sel_{target_col}",
-                            label_visibility="collapsed"
+                            label_visibility="collapsed",
                         )
                     with c_val:
                         for rule in sel_rules:
@@ -527,14 +746,14 @@ with tab_ingestion:
                                 min_val = st.number_input(
                                     f"Min limit value for {target_col}",
                                     value=0.0,
-                                    key=f"dq_val_min_{target_col}"
+                                    key=f"dq_val_min_{target_col}",
                                 )
                                 col_rules.append(f"min_val:{min_val}")
                             elif rule == "Upper Bound Limit":
                                 max_val = st.number_input(
                                     f"Upper limit value for {target_col}",
                                     value=0.0,
-                                    key=f"dq_val_max_{target_col}"
+                                    key=f"dq_val_max_{target_col}",
                                 )
                                 col_rules.append(f"max_val:{max_val}")
                             elif rule == "Email Format":
@@ -546,7 +765,7 @@ with tab_ingestion:
                                     min_value=0,
                                     value=0,
                                     step=1,
-                                    key=f"dq_val_minlen_{target_col}"
+                                    key=f"dq_val_minlen_{target_col}",
                                 )
                                 col_rules.append(f"min_length:{min_len}")
                             elif rule == "Maximum Length":
@@ -555,7 +774,7 @@ with tab_ingestion:
                                     min_value=0,
                                     value=0,
                                     step=1,
-                                    key=f"dq_val_maxlen_{target_col}"
+                                    key=f"dq_val_maxlen_{target_col}",
                                 )
                                 col_rules.append(f"max_length:{max_len}")
                             elif rule == "Allowed Options":
@@ -563,58 +782,67 @@ with tab_ingestion:
                                     f"Allowed options for {target_col}",
                                     value="",
                                     key=f"dq_val_opts_{target_col}",
-                                    placeholder="Comma-separated values"
+                                    placeholder="Comma-separated values",
                                 )
                                 if allowed_opts.strip():
-                                    col_rules.append(f"allowed_options:{allowed_opts.strip()}")
-                            
+                                    col_rules.append(
+                                        f"allowed_options:{allowed_opts.strip()}"
+                                    )
+
                     if col_rules:
                         dq_rules[target_col] = col_rules
         except Exception as ex:
             st.error(f"Failed to parse uploaded CSV schema preview: {str(ex)}")
 
-    btn_disabled = (selected_display == "-- Select Table --" or uploaded_csv is None)
-    
+    btn_disabled = selected_display == "-- Select Table --" or uploaded_csv is None
+
     col_action = st.columns([1, 4])
     with col_action[0]:
         upload_triggered = st.button(
-            "Upload and Process", 
-            disabled=btn_disabled, 
-            type="primary", 
-            use_container_width=True
+            "Upload and Process",
+            disabled=btn_disabled,
+            type="primary",
+            use_container_width=True,
         )
 
     # Placeholders for upload progress and statistics
     if upload_triggered:
         progress_bar = st.progress(0)
         status_text = st.empty()
-        
+
         status_text.text("Contacting server and validating files...")
         progress_bar.progress(20)
-        
+
         try:
             target_table_name = table_config_map[selected_display]["name"]
-            
+
             # Prepare payload
             files = {"file": (uploaded_csv.name, uploaded_csv.getvalue(), "text/csv")}
-            
+
             import json
+
             data = {
                 "target_table": target_table_name,
-                "column_mapping": json.dumps(column_mapping) if column_mapping else None,
+                "column_mapping": (
+                    json.dumps(column_mapping) if column_mapping else None
+                ),
                 "data_types": json.dumps(data_types) if data_types else None,
-                "dq_rules": json.dumps(dq_rules) if dq_rules else None
+                "dq_rules": json.dumps(dq_rules) if dq_rules else None,
             }
-            
-            status_text.text("Processing CSV columns, validating schemas and filtering duplicates...")
+
+            status_text.text(
+                "Processing CSV columns, validating schemas and filtering duplicates..."
+            )
             progress_bar.progress(60)
-            
+
             res = requests.post(f"{API_URL}/upload/", files=files, data=data)
-            
+
             progress_bar.progress(100)
             if res.status_code == 200:
                 status_text.empty()
-                st.success("Data Ingestion and Auditing Pipeline completed successfully!")
+                st.success(
+                    "Data Ingestion and Auditing Pipeline completed successfully!"
+                )
                 st.session_state["last_upload_stats"] = res.json()
             else:
                 status_text.empty()
@@ -632,87 +860,117 @@ with tab_ingestion:
         stats = st.session_state["last_upload_stats"]
         st.divider()
         st.markdown("### 📋 Ingestion Summary Audits")
-        
+
         # Grid layout for general info
         col_info1, col_info2, col_info3 = st.columns(3)
         with col_info1:
-            st.markdown(f"""
+            st.markdown(
+                f"""
             <div class="stats-card" style="border-left: 5px solid #2563eb;">
                 <div class="stats-title">Target Table</div>
                 <div class="stats-value" style="font-size: 1.25rem;">{stats['table_name']}</div>
             </div>
-            """, unsafe_allow_html=True)
+            """,
+                unsafe_allow_html=True,
+            )
         with col_info2:
-            st.markdown(f"""
+            st.markdown(
+                f"""
             <div class="stats-card" style="border-left: 5px solid #475569;">
                 <div class="stats-title">File Name</div>
                 <div class="stats-value" style="font-size: 1.25rem;">{stats['file_name']}</div>
             </div>
-            """, unsafe_allow_html=True)
+            """,
+                unsafe_allow_html=True,
+            )
         with col_info3:
-            st.markdown(f"""
+            st.markdown(
+                f"""
             <div class="stats-card" style="border-left: 5px solid #0d9488;">
                 <div class="stats-title">Processing Duration</div>
                 <div class="stats-value" style="font-size: 1.25rem;">{stats['processing_time_seconds']} seconds</div>
             </div>
-            """, unsafe_allow_html=True)
+            """,
+                unsafe_allow_html=True,
+            )
 
         # Metric count grid
         col_cnt1, col_cnt2, col_cnt3, col_cnt4, col_cnt5 = st.columns(5)
         with col_cnt1:
-            st.markdown(f"""
+            st.markdown(
+                f"""
             <div class="stats-card">
                 <div class="stats-title">Total Records</div>
                 <div class="stats-value">{stats['total_rows']:,}</div>
             </div>
-            """, unsafe_allow_html=True)
+            """,
+                unsafe_allow_html=True,
+            )
         with col_cnt2:
-            st.markdown(f"""
+            st.markdown(
+                f"""
             <div class="stats-card" style="background-color: #f0fdf4;">
                 <div class="stats-title" style="color: #15803d;">Inserted Records</div>
                 <div class="stats-value" style="color: #166534;">{stats['inserted_rows']:,}</div>
             </div>
-            """, unsafe_allow_html=True)
+            """,
+                unsafe_allow_html=True,
+            )
         with col_cnt3:
-            st.markdown(f"""
+            st.markdown(
+                f"""
             <div class="stats-card" style="background-color: #fffbeb;">
                 <div class="stats-title" style="color: #b45309;">Duplicates Pruned</div>
                 <div class="stats-value" style="color: #92400e;">{stats['duplicate_rows']:,}</div>
             </div>
-            """, unsafe_allow_html=True)
+            """,
+                unsafe_allow_html=True,
+            )
         with col_cnt4:
-            st.markdown(f"""
+            st.markdown(
+                f"""
             <div class="stats-card" style="background-color: #fef2f2;">
                 <div class="stats-title" style="color: #b91c1c;">Invalid Rejected</div>
                 <div class="stats-value" style="color: #991b1b;">{stats['invalid_rows']:,}</div>
             </div>
-            """, unsafe_allow_html=True)
+            """,
+                unsafe_allow_html=True,
+            )
         with col_cnt5:
-            st.markdown(f"""
+            st.markdown(
+                f"""
             <div class="stats-card" style="background-color: #ecfdf5; border: 1px solid #10b981;">
                 <div class="stats-title" style="color: #047857;">Final Loaded</div>
                 <div class="stats-value" style="color: #065f46;">{stats['final_loaded_rows']:,}</div>
             </div>
-            """, unsafe_allow_html=True)
+            """,
+                unsafe_allow_html=True,
+            )
 
         val_errors = stats.get("validation_errors", [])
         if val_errors:
             st.divider()
-            st.warning(f"⚠️ Skipped {len(val_errors)} invalid records due to validation rule warnings:")
+            st.warning(
+                f"⚠️ Skipped {len(val_errors)} invalid records due to validation rule warnings:"
+            )
             df_warnings = pd.DataFrame(val_errors)
-            df_warnings = df_warnings.rename(columns={
-                "row_index": "CSV Row",
-                "column": "Database Column",
-                "value": "Raw Value",
-                "reason": "Warning Reason"
-            })
+            df_warnings = df_warnings.rename(
+                columns={
+                    "row_index": "CSV Row",
+                    "column": "Database Column",
+                    "value": "Raw Value",
+                    "reason": "Warning Reason",
+                }
+            )
             st.dataframe(df_warnings, use_container_width=True)
 
 
 # --- TAB 4: Gemini AI Analyst ---
 with tab_ai_insights:
     st.subheader("🤖 Gemini AI Natural Language Query & SQL Analyst")
-    st.write("Query your live CPG database using standard English questions. Gemini will translate the question to SQL, execute it against your tables, and write a business explanation of the answer.")
+    st.write(
+        "Query your live CPG database using standard English questions. Gemini will translate the question to SQL, execute it against your tables, and write a business explanation of the answer."
+    )
 
     # Show database tables cheat-sheet
     with st.expander("📋 View Database Tables & Columns Info"):
@@ -726,7 +984,7 @@ with tab_ai_insights:
     user_query = st.text_input(
         "Ask a business question about the database:",
         placeholder="e.g., What is the total revenue per region?",
-        help="Type any query. Examples: 'Count all sales transactions', 'List unique product categories', 'How much revenue was generated for Snacks?'"
+        help="Type any query. Examples: 'Count all sales transactions', 'List unique product categories', 'How much revenue was generated for Snacks?'",
     )
 
     if st.button("Execute AI Query Analysis", type="primary", use_container_width=True):
@@ -739,14 +997,14 @@ with tab_ai_insights:
                     res = requests.post(f"{API_URL}/insights/query", json=payload)
                     if res.status_code == 200:
                         query_data = res.json()
-                        
+
                         # Render Columns
                         col_sql, col_tbl = st.columns([2, 3])
-                        
+
                         with col_sql:
                             st.markdown("##### 💻 Generated SQL Query")
                             st.code(query_data["sql"], language="sql")
-                            
+
                         with col_tbl:
                             st.markdown("##### 📋 Raw Query Results")
                             if query_data["results"]:
@@ -754,18 +1012,23 @@ with tab_ai_insights:
                                 st.dataframe(df_res, use_container_width=True)
                             else:
                                 st.info("No records matched or returned.")
-                        
+
                         st.markdown("##### 📝 Executive Explanation")
-                        st.markdown(f"""
+                        st.markdown(
+                            f"""
                         <div class="ai-insight-box" style="border-left: 5px solid #0d9488; background: linear-gradient(135deg, rgba(240, 253, 250, 0.8) 0%, rgba(204, 251, 241, 0.5) 100%);">
                             <strong>Gemini Business Explanation:</strong><br><br>
                             {query_data['explanation'].replace(chr(10), '<br>')}
                         </div>
-                        """, unsafe_allow_html=True)
+                        """,
+                            unsafe_allow_html=True,
+                        )
                     else:
                         st.error(f"Failed to analyze query: HTTP {res.status_code}")
                 except Exception as e:
                     st.error(f"Network error trying to connect to API: {str(e)}")
-                    
+
 st.divider()
-st.caption(f"Connected to backend service at: {API_URL} | Local Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+st.caption(
+    f"Connected to backend service at: {API_URL} | Local Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+)

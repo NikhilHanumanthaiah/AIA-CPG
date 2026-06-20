@@ -1,0 +1,38 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  lint-and-test:
+    name: Lint, Format & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install black isort pytest
+          pip install -r requirements.txt
+
+      - name: Check Formatting (Black)
+        run: black --check .
+
+      - name: Check Imports Order (isort)
+        run: isort --check-only .
+
+      - name: Run Pytest Suite
+        run: pytest
+        env:
+          GEMINI_API_KEY: "mock_key_for_ci"

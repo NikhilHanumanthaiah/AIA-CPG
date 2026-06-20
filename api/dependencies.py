@@ -1,11 +1,13 @@
 from typing import Generator
+
 from sqlalchemy.orm import Session
 
-from database.connection import SessionLocal
 from ai.gemini_client import GeminiClient
+from database.connection import SessionLocal
 from forecasting.model import ForecastingService
-from transformations.cleaner import DataCleaner
 from ingestion.csv_reader import CSVReader
+from transformations.cleaner import DataCleaner
+
 
 def get_db() -> Generator[Session, None, None]:
     """
@@ -18,11 +20,13 @@ def get_db() -> Generator[Session, None, None]:
     finally:
         db.close()
 
+
 def get_gemini_client() -> GeminiClient:
     """
     FastAPI dependency providing the Gemini AI client wrapper.
     """
     return GeminiClient()
+
 
 def get_forecast_service() -> ForecastingService:
     """
@@ -30,11 +34,13 @@ def get_forecast_service() -> ForecastingService:
     """
     return ForecastingService()
 
+
 def get_cleaner() -> DataCleaner:
     """
     FastAPI dependency providing the data transformations cleaner.
     """
     return DataCleaner()
+
 
 def get_reader() -> CSVReader:
     """

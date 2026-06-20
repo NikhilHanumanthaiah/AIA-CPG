@@ -1,13 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
-from sqlalchemy.orm import Session
-from typing import List, Dict, Any, Optional
-from pydantic import BaseModel
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from api.dependencies import get_db
 from api.services.upload_service import UploadService
 
 router = APIRouter(prefix="/upload", tags=["Data Upload Control"])
+
 
 # --- Pydantic Schema Models ---
 class TableItem(BaseModel):
@@ -16,14 +18,17 @@ class TableItem(BaseModel):
     columns: Dict[str, str] = {}
     required_columns: List[str] = []
 
+
 class SupportedTablesResponse(BaseModel):
     tables: List[TableItem]
+
 
 class ValidationErrorDetail(BaseModel):
     row_index: int
     column: str
     value: Optional[str] = None
     reason: str
+
 
 class UploadStatisticsResponse(BaseModel):
     status: str
@@ -40,6 +45,7 @@ class UploadStatisticsResponse(BaseModel):
     processing_time_seconds: int
     validation_errors: List[ValidationErrorDetail] = []
 
+
 # --- API Endpoints ---
 @router.get("/tables", response_model=SupportedTablesResponse)
 def get_uploadable_tables():
@@ -49,6 +55,7 @@ def get_uploadable_tables():
     tables = UploadService.get_supported_tables()
     return SupportedTablesResponse(tables=tables)
 
+
 @router.post("/", response_model=UploadStatisticsResponse)
 async def process_file_upload(
     file: UploadFile = File(...),
@@ -56,7 +63,7 @@ async def process_file_upload(
     column_mapping: Optional[str] = Form(None),
     data_types: Optional[str] = Form(None),
     dq_rules: Optional[str] = Form(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Handles CSV upload, schema verification, duplicates pruning, insertion, and stats logging.
@@ -64,7 +71,7 @@ async def process_file_upload(
     if not file.filename.lower().endswith(".csv"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unsupported file format. Please upload a valid CSV file."
+            detail="Unsupported file format. Please upload a valid CSV file.",
         )
 
     try:
@@ -76,23 +83,19 @@ async def process_file_upload(
             target_table=target_table,
             column_mapping=column_mapping,
             data_types=data_types,
-            dq_rules=dq_rules
+            dq_rules=dq_rules,
         )
         return UploadStatisticsResponse(**stats)
     except ValueError as ve:
         # Invalid schema, unsupported table, or validation error
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(ve)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
     except RuntimeError as re:
         # Database write or connection errors
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(re)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(re)
         )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred during processing: {str(e)}"
+            detail=f"An unexpected error occurred during processing: {str(e)}",
         )

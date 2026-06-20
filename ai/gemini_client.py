@@ -1,15 +1,18 @@
 import logging
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 import google.generativeai as genai
+
 from api.config import settings
 
 logger = logging.getLogger(__name__)
+
 
 class GeminiClient:
     """
     Wrapper for interacting with the Google Gemini API to generate insights and translate text to SQL.
     """
+
     def __init__(self):
         self.api_key = settings.GEMINI_API_KEY
         self.model_name = settings.GEMINI_MODEL_NAME
@@ -19,11 +22,15 @@ class GeminiClient:
             try:
                 genai.configure(api_key=self.api_key)
                 self.client_initialized = True
-                logger.info("Gemini API successfully configured with model: %s", self.model_name)
+                logger.info(
+                    "Gemini API successfully configured with model: %s", self.model_name
+                )
             except Exception as e:
                 logger.error("Failed to configure Gemini API client: %s", str(e))
         else:
-            logger.warning("GEMINI_API_KEY not found in environment. Running in AI mock-response mode.")
+            logger.warning(
+                "GEMINI_API_KEY not found in environment. Running in AI mock-response mode."
+            )
 
     def generate_sales_summary(self, kpi_data: Dict[str, Any]) -> str:
         """
@@ -34,12 +41,12 @@ class GeminiClient:
             f"{kpi_data}. Highlight top performers, flags, and actionable next steps."
         )
         logger.info("Generating sales summary with Gemini API.")
-        
+
         region = kpi_data.get("region", "All")
         category = kpi_data.get("category", "All")
         total_rev = kpi_data.get("total_revenue", 0.0)
         total_qty = kpi_data.get("total_quantity", 0)
-        
+
         fallback_msg = (
             f"API Fallback: Sales metrics summary for Region: '{region}', Category: '{category}'.\n"
             f"Total Revenue is ${total_rev:,.2f} over a total volume of {total_qty:,} units sold."
@@ -55,12 +62,12 @@ class GeminiClient:
             f"{forecast_summary}. Describe what the trend suggests for demand planning."
         )
         logger.info("Generating forecast explanation with Gemini API.")
-        
+
         region = forecast_summary.get("region", "All")
         category = forecast_summary.get("category", "All")
         proj_rev = forecast_summary.get("30_day_projected_revenue", 0.0)
         trend = forecast_summary.get("trend_direction", "flat")
-        
+
         fallback_msg = (
             f"API Fallback: Demand planning projection for Region: '{region}', Category: '{category}'.\n"
             f"The 30-day projected revenue is ${proj_rev:,.2f} with an overall trend indicating a '{trend}' direction."
@@ -108,17 +115,17 @@ class GeminiClient:
         - revenue: NUMERIC(12, 2), not null
         - currency: VARCHAR(10)
         """
-        
+
         prompt = (
             f"You are a PostgreSQL expert translating business questions to SQL.\n"
             f"{schema_info}\n"
-            f"Question: \"{question}\"\n"
+            f'Question: "{question}"\n'
             f"Instructions:\n"
             f"Generate a valid PostgreSQL query for the question. Output ONLY the raw SQL query. "
             f"Do not write any markdown code block syntax, backticks, or explanations."
         )
         logger.info("Generating SQL from question with Gemini.")
-        
+
         # Build a robust programmatic fallback based on question content
         q_lower = question.lower()
         if "revenue" in q_lower or "sales" in q_lower:
@@ -136,7 +143,7 @@ class GeminiClient:
             fallback = "SELECT count(*) as customer_count FROM customer_master"
         else:
             fallback = "SELECT * FROM fact_sales LIMIT 5"
-            
+
         if not self.client_initialized:
             logger.debug("AI client not initialized. Returning fallback response.")
             sql_out = fallback
@@ -146,9 +153,12 @@ class GeminiClient:
                 response = model.generate_content(prompt)
                 sql_out = response.text
             except Exception as e:
-                logger.error("Failed to call Gemini API to generate SQL: %s. Returning fallback SQL.", str(e))
+                logger.error(
+                    "Failed to call Gemini API to generate SQL: %s. Returning fallback SQL.",
+                    str(e),
+                )
                 sql_out = fallback
-        
+
         # Clean potential markdown wrapping
         sql_out = sql_out.strip()
         if sql_out.startswith("```sql"):
@@ -165,23 +175,26 @@ class GeminiClient:
         """
         prompt = (
             f"You are a CPG executive analyst. Explain the answer to this business question based on the query results.\n"
-            f"Question: \"{question}\"\n"
+            f'Question: "{question}"\n'
             f"SQL Query Executed: {sql}\n"
             f"Query Results: {results}\n\n"
             f"Provide a clear, professional, and concise narrative explanation explaining exactly what these results mean for business planning."
         )
         logger.info("Explaining SQL query results with Gemini.")
-        
+
         if not self.client_initialized:
             logger.debug("AI client not initialized. Returning fallback response.")
             return f"API Fallback: Displaying raw query results because AI client is not initialized.\nQuery: `{sql}`\nResults: {results}"
-            
+
         try:
             model = genai.GenerativeModel(self.model_name)
             response = model.generate_content(prompt)
             return response.text
         except Exception as e:
-            logger.error("Failed to call Gemini API to explain results: %s. Returning fallback explanation.", str(e))
+            logger.error(
+                "Failed to call Gemini API to explain results: %s. Returning fallback explanation.",
+                str(e),
+            )
             return (
                 f"API Fallback: Displaying raw query results because Gemini API failed or was rate-limited.\n"
                 f"Error details: {str(e)}\n"
@@ -196,12 +209,13 @@ class GeminiClient:
         if not self.client_initialized:
             logger.debug("AI client not initialized. Returning fallback response.")
             return default_response
-            
+
         try:
             model = genai.GenerativeModel(self.model_name)
             response = model.generate_content(prompt)
             return response.text
         except Exception as e:
-            logger.error("Failed to call Gemini API: %s. Returning fallback response.", str(e))
+            logger.error(
+                "Failed to call Gemini API: %s. Returning fallback response.", str(e)
+            )
             return f"{default_response}\n\n(Note: Fallback used due to API error: {str(e)})"
-

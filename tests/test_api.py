@@ -1,8 +1,10 @@
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
 from datetime import datetime
 
-from database.models import ProductDimension, StoreDimension, SalesFact
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+
+from database.models import ProductDimension, SalesFact, StoreDimension
+
 
 def test_health_check(client: TestClient):
     """
@@ -12,13 +14,16 @@ def test_health_check(client: TestClient):
     assert response.status_code == 200
     assert response.json()["status"] == "healthy"
 
+
 def test_get_sales_kpis(client: TestClient, db_session: Session):
     """
     Tests retrieving sales KPIs from the backend, pre-populating relational tables.
     """
     # 1. Populate dimensions and sales fact
     prod = ProductDimension(sku_id="SKU001", category="Beverages", brand="BrandA")
-    store = StoreDimension(store_id="STORE01", region="Northeast", state="NY", city="New York")
+    store = StoreDimension(
+        store_id="STORE01", region="Northeast", state="NY", city="New York"
+    )
     db_session.add_all([prod, store])
     db_session.commit()
 
@@ -30,7 +35,7 @@ def test_get_sales_kpis(client: TestClient, db_session: Session):
         quantity=10,
         unit_price=25.00,
         revenue=250.00,
-        currency="USD"
+        currency="USD",
     )
     db_session.add(sale)
     db_session.commit()
@@ -44,6 +49,7 @@ def test_get_sales_kpis(client: TestClient, db_session: Session):
     assert data["total_quantity"] == 10
     assert "Northeast" in data["regions_represented"]
 
+
 def test_generate_ai_insight(client: TestClient):
     """
     Tests triggering Gemini AI sales summary endpoint.
@@ -54,7 +60,11 @@ def test_generate_ai_insight(client: TestClient):
     data = response.json()
     assert data["insight_type"] == "Sales Summary"
     assert "narrative" in data
-    assert "Fallback" in data["narrative"] or "Mock" in data["narrative"] or "Revenue" in data["narrative"]
+    assert (
+        "Fallback" in data["narrative"]
+        or "Mock" in data["narrative"]
+        or "Revenue" in data["narrative"]
+    )
 
 
 def test_get_regions_and_categories(client: TestClient, db_session: Session):
@@ -64,8 +74,12 @@ def test_get_regions_and_categories(client: TestClient, db_session: Session):
     # 1. Populate dimensions
     prod1 = ProductDimension(sku_id="SKU001", category="Beverages", brand="BrandA")
     prod2 = ProductDimension(sku_id="SKU002", category="Snacks", brand="BrandB")
-    store1 = StoreDimension(store_id="STORE01", region="Northeast", state="NY", city="New York")
-    store2 = StoreDimension(store_id="STORE02", region="West", state="CA", city="San Francisco")
+    store1 = StoreDimension(
+        store_id="STORE01", region="Northeast", state="NY", city="New York"
+    )
+    store2 = StoreDimension(
+        store_id="STORE02", region="West", state="CA", city="San Francisco"
+    )
     db_session.add_all([prod1, prod2, store1, store2])
     db_session.commit()
 
@@ -85,13 +99,16 @@ def test_get_regions_and_categories(client: TestClient, db_session: Session):
     assert "Snacks" in categories
     assert len(categories) == 2
 
+
 def test_execute_natural_query(client: TestClient, db_session: Session):
     """
     Tests natural language Text-to-SQL API query execution.
     """
     # 1. Populate some sales data to query
     prod = ProductDimension(sku_id="SKU099", category="Dairy", brand="BrandC")
-    store = StoreDimension(store_id="STORE99", region="Northeast", state="NY", city="Albany")
+    store = StoreDimension(
+        store_id="STORE99", region="Northeast", state="NY", city="Albany"
+    )
     db_session.add_all([prod, store])
     db_session.commit()
 
@@ -103,7 +120,7 @@ def test_execute_natural_query(client: TestClient, db_session: Session):
         quantity=5,
         unit_price=10.00,
         revenue=50.00,
-        currency="USD"
+        currency="USD",
     )
     db_session.add(sale)
     db_session.commit()
@@ -123,9 +140,12 @@ def test_forecast_flow(client: TestClient, db_session: Session):
     Tests POST /api/v1/forecast/run and GET /api/v1/forecast/ endpoints.
     """
     from datetime import timedelta
+
     # 1. Populate test sales data
     prod = ProductDimension(sku_id="SKU100", category="Dairy", brand="BrandD")
-    store = StoreDimension(store_id="STORE100", region="West", state="CA", city="San Jose")
+    store = StoreDimension(
+        store_id="STORE100", region="West", state="CA", city="San Jose"
+    )
     db_session.add_all([prod, store])
     db_session.commit()
 
@@ -139,7 +159,7 @@ def test_forecast_flow(client: TestClient, db_session: Session):
         quantity=5,
         unit_price=10.00,
         revenue=50.00,
-        currency="USD"
+        currency="USD",
     )
     sale2 = SalesFact(
         transaction_id="TXN102",
@@ -149,17 +169,13 @@ def test_forecast_flow(client: TestClient, db_session: Session):
         quantity=6,
         unit_price=10.00,
         revenue=60.00,
-        currency="USD"
+        currency="USD",
     )
     db_session.add_all([sale1, sale2])
     db_session.commit()
 
     # Trigger forecast run via POST
-    payload = {
-        "days_to_predict": 7,
-        "region": "West",
-        "category": "Dairy"
-    }
+    payload = {"days_to_predict": 7, "region": "West", "category": "Dairy"}
     response = client.post("/api/v1/forecast/run", json=payload)
     assert response.status_code == 200
     data = response.json()
@@ -178,6 +194,3 @@ def test_forecast_flow(client: TestClient, db_session: Session):
         assert item["category"] == "Dairy"
         assert "predicted_revenue" in item
         assert "forecast_date" in item
-
-
-

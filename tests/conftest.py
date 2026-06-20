@@ -1,15 +1,17 @@
 import os
+
 # Set testing environment variable BEFORE importing any app modules to prevent database engine binding errors.
 os.environ["APP_ENV"] = "testing"
 
-import pytest
 from typing import Generator
+
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session, sessionmaker
 
-from api.main import app
 from api.dependencies import get_db
+from api.main import app
 from database.connection import Base
 
 # Setup a clean in-memory SQLite database for test execution
@@ -20,6 +22,7 @@ engine = create_engine(
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_db() -> Generator[None, None, None]:
     """
@@ -29,6 +32,7 @@ def setup_test_db() -> Generator[None, None, None]:
     yield
     Base.metadata.drop_all(bind=engine)
 
+
 @pytest.fixture
 def db_session() -> Generator[Session, None, None]:
     """
@@ -37,24 +41,26 @@ def db_session() -> Generator[Session, None, None]:
     connection = engine.connect()
     transaction = connection.begin()
     session = TestingSessionLocal(bind=connection)
-    
+
     yield session
-    
+
     session.close()
     transaction.rollback()
     connection.close()
+
 
 @pytest.fixture
 def client(db_session: Session) -> Generator[TestClient, None, None]:
     """
     Overrides the FastAPI get_db dependency to use the test database session.
     """
+
     def _override_get_db():
         try:
             yield db_session
         finally:
             pass
-            
+
     app.dependency_overrides[get_db] = _override_get_db
     with TestClient(app) as test_client:
         yield test_client
