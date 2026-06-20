@@ -16,18 +16,23 @@ We are building a production-oriented analytics platform for a Consumer Packaged
    - Utilizes `Mapped` and `mapped_column` type annotations to provide structural type checking.
    - Separate models defined for `fact_sales` and core dimensions to match business domain structures.
 
-3. **Frontend UI: Streamlit**
+3. **Database Store: PostgreSQL**
+   - Chosen as the production operational store over options like SQLite or DuckDB.
+   - **PostgreSQL vs. DuckDB:** DuckDB is an OLAP (analytical) database engine designed for fast, local, in-process queries on static files. However, it lacks robust concurrent write handling, row-level locking, and networking APIs required for multi-client web backend services. PostgreSQL provides standard ACID transaction compliance, concurrent connection scaling, and robust multi-user read/write support necessary for operational APIs.
+   - **PostgreSQL vs. SQLite:** SQLite is excellent for lightweight local testing, but it cannot scale to multi-container microservice configurations due to write-locking behaviors and file-system local limitations.
+
+4. **Frontend UI: Streamlit**
    - Enables fast prototyping of analytical charts, dashboards, and AI interactions without writing heavy JavaScript.
    - Standard HTTP client communication to interact with the backend FastAPI.
 
-4. **Forecasting Engine: Facebook Prophet**
+5. **Forecasting Engine: Facebook Prophet**
    - Chosen for its time-series robustness and native support for trends and seasonalities.
    - Configured with a fallback mock service to ensure baseline runs complete even if local binary dependencies are absent.
 
-5. **AI Insights Layer: Google Gemini (google-generativeai)**
+6. **AI Insights Layer: Google Gemini (google-generativeai)**
    - Utilizes Gemini's large context windows to process summaries of historical sales KPIs and projected demand lines.
 
-6. **Containerization: Docker and Compose**
+7. **Containerization: Docker and Compose**
    - Isolates the database, API server, and Streamlit user interface into standard multi-container environments.
 
 ## Consequences
