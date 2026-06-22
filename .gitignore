@@ -165,5 +165,3 @@ Thumbs.db
 *.db
 test.db
 
-# extra files for the project
-test_data

@@ -1,0 +1,11 @@
+store_id,region,state,city
+ST001,South,Karnataka,Bangalore
+ST002,South,Tamil Nadu,Chennai
+ST003,South,Telangana,Hyderabad
+ST004,West,Maharashtra,Mumbai
+ST005,West,Gujarat,Ahmedabad
+ST006,North,Delhi,New Delhi
+ST007,North,Uttar Pradesh,Noida
+ST008,East,West Bengal,Kolkata
+ST009,East,Odisha,Bhubaneswar
+ST010,Central,Madhya Pradesh,Indore
